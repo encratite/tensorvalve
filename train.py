@@ -1,26 +1,10 @@
 import sys
-import wave
+
+import scipy.io.wavfile
 
 def read_wav(path):
-	wav = wave.open(path, 'rb')
-	sample_width = wav.getsampwidth()
-	if sample_width != 3:
-		raise Exception('Invalid sample width. Input must be 24-bit.')
-	if wav.getnchannels() != 1:
-		raise Exception('Invalid channel count. Input must be mono.')
-	frame_count = wav.getnframes()
-	frames = wav.readframes(frame_count)
-	float_samples = []
-	for i in range(0, frame_count):
-		offset = i * sample_width
-		unsigned_value = frames[offset] | (frames[offset + 1] << 8) | (frames[offset + 2] << 16)
-		mask = 0x800000
-		value = -(unsigned_value & mask) + (unsigned_value & ~mask)
-		float_value = value / 2**(8 * sample_width - 1)
-		float_samples.append(float_value)
-	wav.close()
-	output = array('f', float_samples)
-	return output
+	rate, data = scipy.io.wavfile.read(path)
+	return data
 
 if len(sys.argv) != 3:
 	print('Usage:')
