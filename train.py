@@ -1,19 +1,91 @@
 import sys
 
 import scipy.io.wavfile
+import tensorflow as tf
 
 def read_wav(path):
 	rate, data = scipy.io.wavfile.read(path)
 	return data
 
-if len(sys.argv) != 3:
+def get_batch(data, offset, batch_size):
+	return data[offset : offset + batch_size]
+
+def run_operation(dry_data, wet_data, batch_size, operation, session):
+	offset = 0
+	output = []
+	while training_offset + batch_size < len(dry_training_wav):
+		dry_batch = get_batch(dry_data, offset, batch_size)
+		wet_batch = get_batch(wet_data, offset, batch_size)
+		feed = {
+			dry_data: dry_batch,
+			wet_data: wet_batch
+		}
+		operation_output = session.run(operation, feed)
+		output.append(operation_output)
+		offset += batch_size
+	return output
+
+def get_graph():
+	graph = tf.Graph()
+	with graph.as_default():
+		frame_count = 96
+		lstm_layers = 64
+
+		tf.constant(frame_count, name = 'frame_count')
+
+		frame_shape = [frame_count]
+
+		dry_data = tf.placeholder(tf.float32, frame_shape, 'dry_data')
+		wet_data = tf.placeholder(tf.float32, frame_shape, 'wet_data')
+
+		lstm = tf.contrib.cudnn_rnn.CudnnLSTM(lstm_layers, frame_count)
+		reshaped_dry_data = tf.reshape(dry_data, [1, 1, frame_count])
+		lstm_output, _ = lstm(reshaped_dry_data)
+		flat_lstm_output = tf.reshape(lstm_output, frame_shape)
+		prediction = tf.nn.elu(flat_lstm_output)
+
+		loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_training_data), name = 'loss')
+		optimizer = tf.train.AdamOptimizer()
+		minimize = optimizer.minimize(loss, name = 'minimize')
+	return graph
+
+def train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav):
+	graph = get_graph()
+	with tf.Session(graph = graph) as session:
+		initializer = tf.global_variables_initializer()
+		session.run(initializer)
+		iteration = 1
+		frame_count = graph.get_tensor_by_name('frame_count')
+		loss = graph.get_operation_by_name('loss')
+		minimize = graph.get_operation_by_name('minimize')
+		batch_size = frame_count.eval()
+		print('Commencing training.')
+		while True:
+			print(f'Iteration {iteration}')
+			run_operation(dry_training_wav, wet_training_wav, batch_size, minimize, session)
+			losses = run_operation(dry_validation_wav, wet_validation_wav, batch_size, loss, session)
+			validation_loss = sum(losses)
+			print(f'Validation: {validation_loss}')
+			iteration += 1
+
+if len(sys.argv) != 5:
 	print('Usage:')
-	print(f'{sys.argv[0]} <dry.wav> <wet.wav>')
+	print(f'{sys.argv[0]} <dry training WAV file> <wet training WAV file> <dry validation WAV file> <wet validation WAV file>')
 	sys.exit(1)
 
-dry_path = sys.argv[1]
-wet_path = sys.argv[2]
-dry_wav = read_wav(dry_path)
-wet_wav = read_wav(wet_path)
-if len(dry_wav) < len(wet_wav):
-	raise Exception('Wet recording must be at least as long as dry recording.')
+dry_training_wav_path = sys.argv[1]
+wet_training_wav_path = sys.argv[2]
+
+dry_validation_wav_path = sys.argv[3]
+wet_validation_wav_path = sys.argv[4]
+
+dry_training_wav = read_wav(dry_training_wav_path)
+wet_training_wav = read_wav(wet_training_wav_path)
+
+dry_validation_wav = read_wav(dry_validation_wav_path)
+wet_validation_wav = read_wav(wet_validation_wav_path)
+
+if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != len(wet_validation_wav):
+	raise Exception('Dry and wet WAVs must be same length.')
+
+train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
