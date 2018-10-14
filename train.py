@@ -5,15 +5,18 @@ import tensorflow as tf
 
 def read_wav(path):
 	rate, data = scipy.io.wavfile.read(path)
-	return data
+	return tf.convert_to_tensor(data, dtype = tf.float32)
 
 def get_batch(data, offset, batch_size):
 	return data[offset : offset + batch_size]
 
+def get_length(tensor):
+	return tensor.shape[0].value
+
 def run_operation(dry_data, wet_data, batch_size, operation, session):
 	offset = 0
 	output = []
-	while training_offset + batch_size < len(dry_training_wav):
+	while offset + batch_size < get_length(dry_training_wav):
 		dry_batch = get_batch(dry_data, offset, batch_size)
 		wet_batch = get_batch(wet_data, offset, batch_size)
 		feed = {
@@ -31,8 +34,6 @@ def get_graph():
 		frame_count = 96
 		lstm_layers = 64
 
-		tf.constant(frame_count, name = 'frame_count')
-
 		frame_shape = [frame_count]
 
 		dry_data = tf.placeholder(tf.float32, frame_shape, 'dry_data')
@@ -44,7 +45,7 @@ def get_graph():
 		flat_lstm_output = tf.reshape(lstm_output, frame_shape)
 		prediction = tf.nn.elu(flat_lstm_output)
 
-		loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_training_data), name = 'loss')
+		loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_data), name = 'loss')
 		optimizer = tf.train.AdamOptimizer()
 		minimize = optimizer.minimize(loss, name = 'minimize')
 	return graph
@@ -55,10 +56,10 @@ def train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation
 		initializer = tf.global_variables_initializer()
 		session.run(initializer)
 		iteration = 1
-		frame_count = graph.get_tensor_by_name('frame_count')
+		dry_data_placeholder = graph.get_operation_by_name('dry_data')
+		batch_size = dry_data_placeholder.outputs[0].shape[0].value
 		loss = graph.get_operation_by_name('loss')
 		minimize = graph.get_operation_by_name('minimize')
-		batch_size = frame_count.eval()
 		print('Commencing training.')
 		while True:
 			print(f'Iteration {iteration}')
@@ -85,7 +86,7 @@ wet_training_wav = read_wav(wet_training_wav_path)
 dry_validation_wav = read_wav(dry_validation_wav_path)
 wet_validation_wav = read_wav(wet_validation_wav_path)
 
-if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != len(wet_validation_wav):
+if get_length(dry_training_wav) != get_length(wet_training_wav) or get_length(dry_validation_wav) != get_length(wet_validation_wav):
 	raise Exception('Dry and wet WAVs must be same length.')
 
 train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
