@@ -5,23 +5,20 @@ import tensorflow as tf
 
 def read_wav(path):
 	rate, data = scipy.io.wavfile.read(path)
-	return tf.convert_to_tensor(data, dtype = tf.float32)
-
+	return data
+	
 def get_batch(data, offset, batch_size):
 	return data[offset : offset + batch_size]
 
-def get_length(tensor):
-	return tensor.shape[0].value
-
-def run_operation(dry_data, wet_data, batch_size, operation, session):
+def run_operation(dry_data, wet_data, batch_size, operation, dry_data_placeholder, wet_data_placeholder, session):
 	offset = 0
 	output = []
-	while offset + batch_size < get_length(dry_training_wav):
+	while offset + batch_size < len(dry_data):
 		dry_batch = get_batch(dry_data, offset, batch_size)
 		wet_batch = get_batch(wet_data, offset, batch_size)
 		feed = {
-			dry_data: dry_batch,
-			wet_data: wet_batch
+			dry_data_placeholder: dry_batch,
+			wet_data_placeholder: wet_batch
 		}
 		operation_output = session.run(operation, feed)
 		output.append(operation_output)
@@ -50,21 +47,22 @@ def get_graph():
 		minimize = optimizer.minimize(loss, name = 'minimize')
 	return graph
 
-def train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav):
+def train(dry_training_wav_array, wet_training_wav_array, dry_validation_wav_array, wet_validation_wav_array):
 	graph = get_graph()
 	with tf.Session(graph = graph) as session:
 		initializer = tf.global_variables_initializer()
 		session.run(initializer)
 		iteration = 1
-		dry_data_placeholder = graph.get_operation_by_name('dry_data')
-		batch_size = dry_data_placeholder.outputs[0].shape[0].value
+		dry_data_placeholder = graph.get_tensor_by_name('dry_data:0')
+		wet_data_placeholder = graph.get_tensor_by_name('wet_data:0')
+		batch_size = dry_data_placeholder.shape[0].value
 		loss = graph.get_operation_by_name('loss')
 		minimize = graph.get_operation_by_name('minimize')
 		print('Commencing training.')
 		while True:
 			print(f'Iteration {iteration}')
-			run_operation(dry_training_wav, wet_training_wav, batch_size, minimize, session)
-			losses = run_operation(dry_validation_wav, wet_validation_wav, batch_size, loss, session)
+			run_operation(dry_training_wav, wet_training_wav, batch_size, minimize, dry_data_placeholder, wet_data_placeholder, session)
+			losses = run_operation(dry_validation_wav, wet_validation_wav, batch_size, loss, dry_data_placeholder, wet_data_placeholder, session)
 			validation_loss = sum(losses)
 			print(f'Validation: {validation_loss}')
 			iteration += 1
@@ -86,7 +84,7 @@ wet_training_wav = read_wav(wet_training_wav_path)
 dry_validation_wav = read_wav(dry_validation_wav_path)
 wet_validation_wav = read_wav(wet_validation_wav_path)
 
-if get_length(dry_training_wav) != get_length(wet_training_wav) or get_length(dry_validation_wav) != get_length(wet_validation_wav):
+if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != len(wet_validation_wav):
 	raise Exception('Dry and wet WAVs must be same length.')
 
 train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
