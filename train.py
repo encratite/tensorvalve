@@ -3,6 +3,8 @@ import sys
 import scipy.io.wavfile
 import tensorflow as tf
 
+from profiler import Profiler
+
 def read_wav(path):
 	rate, data = scipy.io.wavfile.read(path)
 	return data
@@ -14,15 +16,20 @@ def run_operation(dry_data, wet_data, batch_size, operation, dry_data_placeholde
 	offset = 0
 	output = []
 	while offset + batch_size < len(dry_data):
+		print(f'Progress: {offset}/{len(dry_data)}')
+		profiler = Profiler()
 		dry_batch = get_batch(dry_data, offset, batch_size)
 		wet_batch = get_batch(wet_data, offset, batch_size)
+		profiler.stop("get_batch")
 		feed = {
 			dry_data_placeholder: dry_batch,
 			wet_data_placeholder: wet_batch
 		}
 		operation_output = session.run(operation, feed)
+		profiler.stop("session.run")
 		output.append(operation_output)
 		offset += batch_size
+		profiler.stop("append")
 	return output
 
 def get_graph():
