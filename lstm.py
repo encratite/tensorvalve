@@ -3,12 +3,13 @@ import tensorflow as tf
 from profiler import Profiler
 
 class LSTMNet:
-	def __init__(self, batch_count, frame_count, lstm_layers):
+	def __init__(self, time_steps, batch_count, frame_count, lstm_layers):
+		self.time_steps = time_steps
 		self.batch_count = batch_count
 		self.frame_count = frame_count
 		self.lstm_layers = lstm_layers
 
-		self.batch_size = batch_count * frame_count
+		self.batch_size = time_steps * batch_count * frame_count
 
 	def train(self, dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav):
 		graph = self.get_graph()
@@ -18,7 +19,7 @@ class LSTMNet:
 			iteration = 1
 			dry_data_placeholder = graph.get_tensor_by_name('dry_data:0')
 			wet_data_placeholder = graph.get_tensor_by_name('wet_data:0')
-			loss = graph.get_operation_by_name('loss')
+			loss = graph.get_tensor_by_name('loss:0')
 			minimize = graph.get_operation_by_name('minimize')
 			print('Commencing training.')
 			while True:
@@ -36,8 +37,8 @@ class LSTMNet:
 			dry_data = tf.placeholder(tf.float32, batch_shape, 'dry_data')
 			wet_data = tf.placeholder(tf.float32, batch_shape, 'wet_data')
 
-			lstm = tf.contrib.cudnn_rnn.CudnnLSTM(self.lstm_layers, self.frame_count, name = "lstm")
-			reshaped_dry_data = tf.reshape(dry_data, [self.batch_count, 1, self.frame_count])
+			lstm = tf.contrib.cudnn_rnn.CudnnLSTM(self.lstm_layers, self.frame_count, name = 'lstm')
+			reshaped_dry_data = tf.reshape(dry_data, [self.time_steps, self.batch_count, self.frame_count])
 			lstm_output, _ = lstm(reshaped_dry_data)
 			flat_lstm_output = tf.reshape(lstm_output, batch_shape)
 			prediction = tf.nn.elu(flat_lstm_output)

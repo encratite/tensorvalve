@@ -27,5 +27,5 @@ wet_validation_wav = read_wav(wet_validation_wav_path)
 if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != len(wet_validation_wav):
 	raise Exception('Dry and wet WAVs must be same length.')
 
-net = LSTMNet(1024, 96, 64)
+net = LSTMNet(32, 512, 96, 64)
 net.train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
