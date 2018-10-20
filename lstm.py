@@ -1,13 +1,18 @@
+import os
+
+from google.protobuf import text_format
 import tensorflow as tf
 
 from profiler import Profiler
 
 class LSTMNet:
-	def __init__(self, time_steps, batch_count, frame_count, lstm_layers):
+	def __init__(self, time_steps, batch_count, frame_count, lstm_layers, graph_file):
 		self.time_steps = time_steps
 		self.batch_count = batch_count
 		self.frame_count = frame_count
 		self.lstm_layers = lstm_layers
+
+		self.graph_file = graph_file
 
 		self.batch_size = time_steps * batch_count * frame_count
 
@@ -33,19 +38,33 @@ class LSTMNet:
 	def get_graph(self):
 		graph = tf.Graph()
 		with graph.as_default():
-			batch_shape = [self.batch_size]
-			dry_data = tf.placeholder(tf.float32, batch_shape, 'dry_data')
-			wet_data = tf.placeholder(tf.float32, batch_shape, 'wet_data')
+			profiler = Profiler()
+			if os.path.isfile(self.graph_file):
+				with open(self.graph_file, 'rb') as file:
+					content = file.read()
+				graph_def = tf.GraphDef()
+				text_format.Merge(content, graph_def)
+				tf.import_graph_def(graph_def)
+				profiler.stop(f'Loaded graph from "{self.graph_file}".')
+			else:
+				print('Constructing graph.')
+				batch_shape = [self.batch_size]
+				dry_data = tf.placeholder(tf.float32, batch_shape, 'dry_data')
+				wet_data = tf.placeholder(tf.float32, batch_shape, 'wet_data')
 
-			lstm = tf.contrib.cudnn_rnn.CudnnLSTM(self.lstm_layers, self.frame_count, name = 'lstm')
-			reshaped_dry_data = tf.reshape(dry_data, [self.time_steps, self.batch_count, self.frame_count])
-			lstm_output, _ = lstm(reshaped_dry_data)
-			flat_lstm_output = tf.reshape(lstm_output, batch_shape)
-			prediction = tf.nn.elu(flat_lstm_output)
+				lstm = tf.contrib.cudnn_rnn.CudnnLSTM(self.lstm_layers, self.frame_count, bias_initializer = tf.contrib.layers.xavier_initializer(), name = 'lstm')
+				reshaped_dry_data = tf.reshape(dry_data, [self.time_steps, self.batch_count, self.frame_count])
+				lstm_output, _ = lstm(reshaped_dry_data)
+				flat_lstm_output = tf.reshape(lstm_output, batch_shape)
+				prediction = tf.nn.elu(flat_lstm_output)
 
-			loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_data), name = 'loss')
-			optimizer = tf.train.AdamOptimizer()
-			minimize = optimizer.minimize(loss, name = 'minimize')
+				loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_data), name = 'loss')
+				optimizer = tf.train.AdamOptimizer()
+				minimize = optimizer.minimize(loss, name = 'minimize')
+				directory = os.path.dirname(self.graph_file)
+				file = os.path.basename(self.graph_file)
+				tf.train.write_graph(graph, directory, file)
+				profiler.stop(f'Constructed graph and stored it in "{self.graph_file}".')
 		return graph
 
 	def run_operation(self, dry_data, wet_data, operation, dry_data_placeholder, wet_data_placeholder, session):
@@ -53,16 +72,16 @@ class LSTMNet:
 		output = []
 		profiler = Profiler()
 		while offset + self.batch_size < len(dry_data):
-			print(f'Progress: {offset}/{len(dry_data)}')
+			# print(f'Progress: {offset}/{len(dry_data)}')
 			dry_batch = self.get_batch(dry_data, offset)
 			wet_batch = self.get_batch(wet_data, offset)
 			feed = {
 				dry_data_placeholder: dry_batch,
 				wet_data_placeholder: wet_batch
 			}
-			profiler.stop('overhead')
+			# profiler.stop('overhead')
 			operation_output = session.run(operation, feed)
-			profiler.stop('kernel')
+			# profiler.stop('kernel')
 			output.append(operation_output)
 			offset += self.batch_size
 		return output
