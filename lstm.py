@@ -43,7 +43,7 @@ class LSTMNet:
 				with open(self.graph_file, 'rb') as file:
 					content = file.read()
 				graph_def = tf.GraphDef()
-				text_format.Merge(content, graph_def)
+				graph_def.ParseFromString(content)
 				tf.import_graph_def(graph_def)
 				profiler.stop(f'Loaded graph from "{self.graph_file}".')
 			else:
@@ -63,7 +63,7 @@ class LSTMNet:
 				minimize = optimizer.minimize(loss, name = 'minimize')
 				directory = os.path.dirname(self.graph_file)
 				file = os.path.basename(self.graph_file)
-				tf.train.write_graph(graph, directory, file)
+				tf.train.write_graph(graph, directory, file, False)
 				profiler.stop(f'Constructed graph and stored it in "{self.graph_file}".')
 		return graph
 
