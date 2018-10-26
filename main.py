@@ -11,7 +11,7 @@ def read_wav(path):
 
 if len(sys.argv) != 6:
 	print('Usage:')
-	print(f'{sys.argv[0]} <dry training WAV file> <wet training WAV file> <dry validation WAV file> <wet validation WAV file> <graph file>')
+	print(f'{sys.argv[0]} <dry training WAV file> <wet training WAV file> <dry validation WAV file> <wet validation WAV file> <session directory>')
 	sys.exit(1)
 
 dry_training_wav_path = sys.argv[1]
@@ -20,7 +20,7 @@ wet_training_wav_path = sys.argv[2]
 dry_validation_wav_path = sys.argv[3]
 wet_validation_wav_path = sys.argv[4]
 
-graph_file = sys.argv[5]
+save_path = sys.argv[5]
 
 profiler = Profiler()
 
@@ -35,5 +35,5 @@ profiler.stop('Done loading WAV files.')
 if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != len(wet_validation_wav):
 	raise Exception('Dry and wet WAVs must be same length.')
 
-net = LSTMNet(32, 512, 96, 64, graph_file)
+net = LSTMNet(32, 512, 96, 64, save_path)
 net.train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
