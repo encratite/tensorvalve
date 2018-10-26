@@ -49,8 +49,6 @@ class LSTMNet:
 
 	def get_graph(self):
 		graph = tf.Graph()
-		if self.save_path_exists():
-			return graph
 		with graph.as_default():
 			print('Constructing graph.')
 			profiler = Profiler()
