@@ -14,20 +14,20 @@ def read_wav(path):
 	return data
 
 def get_parameter_permutation():
-	layer_types = ('lt', [('lstm', tf.contrib.cudnn_rnn.CudnnLSTM), ('gru', tf.contrib.cudnn_rnn.CudnnGRU)])
-	time_steps = ('ts', [1, 4, 16, 64])
-	batch_sizes = ('bs', [1, 4, 16, 64, 256, 512])
-	frame_counts = ('fc', [32, 64, 128, 256])
-	layers = ('la', [1, 8, 64, 128])
-	dropouts = ('dr', [0.0, 0.25, 0.5])
-	rnn_bias_initializers = ('bi', [('zero', None), ('xavier', tf.contrib.layers.xavier_initializer())])
-	activation_functions = ('af', [('elu', tf.nn.elu), ('softsign', tf.nn.softsign), ('tanh', tf.tanh)])
-	learning_rates = ('lr', [0.001, 0.005, 0.01, 0.05])
+	layer_types = ('layer_type', [('lstm', tf.contrib.cudnn_rnn.CudnnLSTM), ('gru', tf.contrib.cudnn_rnn.CudnnGRU)])
+	time_steps = ('time_steps', [1, 4, 16, 64])
+	batch_sizes = ('batch_size', [1, 4, 16, 64, 256, 512])
+	input_sizes = ('input_size', [32, 64, 128, 256])
+	layers = ('layers', [1, 8, 64, 128])
+	dropouts = ('dropouts', [0.0, 0.25, 0.5])
+	rnn_bias_initializers = ('bias_initializer', [('zero', None), ('xavier', tf.contrib.layers.xavier_initializer())])
+	activation_functions = ('activation_function', [('elu', tf.nn.elu), ('softsign', tf.nn.softsign), ('tanh', tf.tanh)])
+	learning_rates = ('learning_rate', [0.001, 0.005, 0.01, 0.05])
 	parameter_definitions = [
 		layer_types,
 		time_steps,
 		batch_sizes,
-		frame_counts,
+		input_sizes,
 		layers,
 		dropouts,
 		rnn_bias_initializers,
@@ -80,22 +80,22 @@ time_limit = 15 * 60
 with TensorValveDatabase(database_path) as database:
 	while True:
 		name, permutation = get_parameter_permutation()
-		model_info = database.get_model(name)
+		model_info = database.get_model_info(name)
 		if model_info is not None and model_info.done_training:
 			print(f'Skipping "{name}" because it has already been trained.')
 			continue
 		print(f'Creating trainer for "{name}".')
 		trainer = TensorValve(
 			name = name,
-			layer_type = permutation['lt'],
-			time_steps = permutation['ts'],
-			batch_size = permutation['bs'],
-			input_size = permutation['is'],
-			layers = permutation['la'],
-			dropout = permutation['dr'],
-			rnn_bias_initializer = permutation['bi'],
-			activation_function = permutation['af'],
-			learning_rate = permutation['lr'],
+			layer_type = permutation['layer_type'],
+			time_steps = permutation['time_steps'],
+			batch_size = permutation['batch_size'],
+			input_size = permutation['input_size'],
+			layers = permutation['layers'],
+			dropout = permutation['dropouts'],
+			rnn_bias_initializer = permutation['bias_initializer'],
+			activation_function = permutation['activation_function'],
+			learning_rate = permutation['learning_rate'],
 			time_limit = time_limit,
 			save_path = name,
 			database = database

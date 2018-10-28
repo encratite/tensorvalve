@@ -32,7 +32,7 @@ class TensorValve:
 		assert dropout is not None
 		assert activation_function is not None
 		assert learning_rate is not None
-		assert Database is not None
+		assert database is not None
 
 		self.name = name
 
@@ -74,6 +74,7 @@ class TensorValve:
 				wet_data_placeholder = graph.get_tensor_by_name('wet_data:0')
 				loss = graph.get_tensor_by_name('loss:0')
 				minimum_loss = graph.get_tensor_by_name('minimum_loss:0')
+				maximum = graph.get_tensor_by_name('maximum:0')
 
 				minimize = graph.get_operation_by_name('minimize')
 				update_minimum_loss = graph.get_operation_by_name('update_minimum_loss')
@@ -91,6 +92,7 @@ class TensorValve:
 					losses = self.run_operation(dry_validation_wav, wet_validation_wav, loss, dry_data_placeholder, wet_data_placeholder, session)
 					validation_loss = sum(losses)
 					profiler.stop(f'Loss: {validation_loss}')
+					print(f'Maximum: {session.run(maximum)}')
 					if epoch % 10 == 0:
 						self.save_session(session, saver)
 						profiler.stop('Saved model.')
@@ -98,8 +100,8 @@ class TensorValve:
 				self.save_session(session, saver)
 				self.upate_database(epoch, minimum_loss, True)
 				profiler.stop('Training time limit expired. Saved model.')
-		except Error as error:
-			print(f'An error occurred while training "{name}": {error}')
+		except Exception as error:
+			print(f'An error occurred while training "{self.name}": {error}')
 			self.update_database(epoch, minimum_loss, False, str(error))
 
 	def get_graph(self):
@@ -112,13 +114,14 @@ class TensorValve:
 			wet_data = tf.placeholder(tf.float32, batch_shape, 'wet_data')
 			epoch_variable = tf.get_variable('epoch', dtype = tf.int32, initializer = tf.constant(0))
 			increment_epoch = tf.assign(epoch_variable, epoch_variable + 1, name = 'increment_epoch')
-			lstm = self.layer_type(self.layers, self.input_size, dropout = self.dropout, bias_initializer = self.rnn_bias_initializer, name = 'rnn')
+			rnn = self.layer_type(self.layers, self.input_size, dropout = self.dropout, bias_initializer = self.rnn_bias_initializer, name = 'rnn')
 			reshaped_dry_data = tf.reshape(dry_data, [self.time_steps, self.batch_size, self.input_size])
-			lstm_output, _ = lstm(reshaped_dry_data)
-			flat_lstm_output = tf.reshape(lstm_output, batch_shape)
-			prediction = self.activation_function(flat_lstm_output, name = 'prediction')
+			rnn_output, _ = rnn(reshaped_dry_data)
+			maximum = tf.reduce_max(rnn_output, name = 'maximum')
+			flat_rnn_output = tf.reshape(rnn_output, batch_shape)
+			prediction = self.activation_function(flat_rnn_output, name = 'prediction')
 			loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_data), name = 'loss')
-			minimum_loss = tf.get_variable('minimum_loss', dtype = tf.float)
+			minimum_loss = tf.get_variable('minimum_loss', dtype = tf.float32)
 			update_minimum_loss = tf.minimum(loss, minimum_loss, 'update_minimum_loss')
 			optimizer = tf.train.AdamOptimizer(learning_rate = self.learning_rate)
 			minimize = optimizer.minimize(loss, name = 'minimize')
@@ -151,8 +154,8 @@ class TensorValve:
 			os.makedirs(self.save_path_directory)
 		saver.save(session, self.save_path)
 
-	def upate_database(self, epochs, minimum_loss, done_training = None, error = None):
-		model_info = self.database.get_model(self.name)
+	def update_database(self, epochs, minimum_loss, done_training = None, error = None):
+		model_info = self.database.get_model_info(self.name)
 		if model_info is None:
 			model_info = ModelInfo(
 				self.name,

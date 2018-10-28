@@ -5,7 +5,7 @@ from modelinfo import ModelInfo
 class TensorValveDatabase:
 	def __init__(self, path):
 		self.connection = sqlite3.connect(path)
-		self.cursor = connection.cursor()
+		self.cursor = self.connection.cursor()
 		self.create_tables()
 
 	def __enter__(self):
@@ -40,6 +40,8 @@ class TensorValveDatabase:
 				name = :name''',
 			parameters)
 		row = self.cursor.fetchone()
+		if row is None:
+			return None
 		model_info = ModelInfo.from_row(row)
 		return model_info
 
