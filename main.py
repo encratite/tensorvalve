@@ -5,6 +5,7 @@ import scipy.io.wavfile
 import tensorflow as tf
 
 from tensorvalve import TensorValve
+from database import TensorValveDatabase
 from profiler import Profiler
 
 def read_wav(path):
@@ -48,9 +49,9 @@ def get_parameter_permutation():
 	name = '-'.join(name_tokens)
 	return (name, permutation)
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 6:
 	print('Usage:')
-	print(f'{sys.argv[0]} <dry training WAV file> <wet training WAV file> <dry validation WAV file> <wet validation WAV file>')
+	print(f'{sys.argv[0]} <dry training WAV file> <wet training WAV file> <dry validation WAV file> <wet validation WAV file> <database file>')
 	sys.exit(1)
 
 dry_training_wav_path = sys.argv[1]
@@ -58,6 +59,8 @@ wet_training_wav_path = sys.argv[2]
 
 dry_validation_wav_path = sys.argv[3]
 wet_validation_wav_path = sys.argv[4]
+
+database_path = sys.argv[5]
 
 profiler = Profiler()
 
@@ -74,24 +77,27 @@ if len(dry_training_wav) != len(wet_training_wav) or len(dry_validation_wav) != 
 
 time_limit = 15 * 60
 
-while True:
-	name, permutation = get_parameter_permutation()
-	print(f'Creating trainer for "{name}".')
-	trainer = TensorValve(
-		layer_type = permutation['lt'],
-		time_steps = permutation['ts'],
-		batch_size = permutation['bs'],
-		input_size = permutation['is'],
-		layers = permutation['la'],
-		dropout = permutation['dr'],
-		rnn_bias_initializer = permutation['bi'],
-		activation_function = permutation['af'],
-		learning_rate = permutation['lr'],
-		time_limit = time_limit,
-		save_path = name
-	)
-	try:
+with TensorValveDatabase(database_path) as database:
+	while True:
+		name, permutation = get_parameter_permutation()
+		model_info = database.get_model(name)
+		if model_info is not None and model_info.done_training:
+			print(f'Skipping "{name}" because it has already been trained.')
+			continue
+		print(f'Creating trainer for "{name}".')
+		trainer = TensorValve(
+			name = name,
+			layer_type = permutation['lt'],
+			time_steps = permutation['ts'],
+			batch_size = permutation['bs'],
+			input_size = permutation['is'],
+			layers = permutation['la'],
+			dropout = permutation['dr'],
+			rnn_bias_initializer = permutation['bi'],
+			activation_function = permutation['af'],
+			learning_rate = permutation['lr'],
+			time_limit = time_limit,
+			save_path = name,
+			database = database
+		)
 		trainer.train(dry_training_wav, wet_training_wav, dry_validation_wav, wet_validation_wav)
-	except Error as error:
-		print(f'An error occurred while training"{name}":')
-		print(error)
