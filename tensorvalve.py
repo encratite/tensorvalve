@@ -1,4 +1,5 @@
 import os
+import time
 
 from google.protobuf import text_format
 import tensorflow as tf
@@ -121,7 +122,7 @@ class TensorValve:
 			flat_rnn_output = tf.reshape(rnn_output, batch_shape)
 			prediction = self.activation_function(flat_rnn_output, name = 'prediction')
 			loss = tf.sqrt(tf.losses.mean_squared_error(prediction, wet_data), name = 'loss')
-			minimum_loss = tf.get_variable('minimum_loss', dtype = tf.float32)
+			minimum_loss = tf.get_variable('minimum_loss', dtype = tf.float32, initializer = tf.constant(1.0))
 			update_minimum_loss = tf.minimum(loss, minimum_loss, 'update_minimum_loss')
 			optimizer = tf.train.AdamOptimizer(learning_rate = self.learning_rate)
 			minimize = optimizer.minimize(loss, name = 'minimize')
