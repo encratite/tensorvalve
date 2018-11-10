@@ -62,7 +62,9 @@ class TensorValve:
 		try:
 			graph = self.get_graph()
 			profiler = Profiler()
-			with tf.Session(graph = graph) as session:
+			config = tf.ConfigProto()
+			config.operation_timeout_in_ms = 30000
+			with tf.Session(graph = graph, config = config) as session:
 				initializer = tf.global_variables_initializer()
 				session.run(initializer)
 				saver = tf.train.Saver()
@@ -74,7 +76,7 @@ class TensorValve:
 				dry_data_placeholder = graph.get_tensor_by_name('dry_data:0')
 				wet_data_placeholder = graph.get_tensor_by_name('wet_data:0')
 				loss = graph.get_tensor_by_name('loss:0')
-				minimum_loss = graph.get_tensor_by_name('minimum_loss:0')
+				minimum_loss_variable = graph.get_tensor_by_name('minimum_loss:0')
 				maximum = graph.get_tensor_by_name('maximum:0')
 
 				minimize = graph.get_operation_by_name('minimize')
@@ -86,9 +88,9 @@ class TensorValve:
 				while self.time_limit is None or time.perf_counter() - start < self.time_limit:
 					profiler = Profiler()
 					operations = [minimize, update_minimum_loss, increment_epoch]
-					self.run_operation(dry_training_wav, wet_training_wav, minimize, dry_data_placeholder, wet_data_placeholder, session)
+					self.run_operation(dry_training_wav, wet_training_wav, operations, dry_data_placeholder, wet_data_placeholder, session)
 					epoch = session.run(epoch_variable)
-					minimum_loss = session.run(minimum_loss)
+					minimum_loss = session.run(minimum_loss_variable)
 					profiler.stop(f'Completed epoch {epoch}.')
 					losses = self.run_operation(dry_validation_wav, wet_validation_wav, loss, dry_data_placeholder, wet_data_placeholder, session)
 					validation_loss = sum(losses)

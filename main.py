@@ -14,11 +14,16 @@ def read_wav(path):
 	return data
 
 def get_parameter_permutation():
-	layer_types = ('layer_type', [('lstm', tf.contrib.cudnn_rnn.CudnnLSTM), ('gru', tf.contrib.cudnn_rnn.CudnnGRU)])
-	time_steps = ('time_steps', [1, 4, 16, 64])
-	batch_sizes = ('batch_size', [1, 4, 16, 64, 256, 512])
-	input_sizes = ('input_size', [32, 64, 128, 256])
-	layers = ('layers', [1, 8, 64, 128])
+	# layer_types = ('layer_type', [('lstm', tf.contrib.cudnn_rnn.CudnnLSTM), ('gru', tf.contrib.cudnn_rnn.CudnnGRU)])
+	layer_types = ('layer_type', [('lstm', tf.contrib.cudnn_rnn.CudnnLSTM)])
+	# time_steps = ('time_steps', [1, 4, 16, 64])
+	time_steps = ('time_steps', [32])
+	# batch_sizes = ('batch_size', [1, 4, 16, 64, 256, 512])
+	batch_sizes = ('batch_size', [128])
+	# input_sizes = ('input_size', [32, 64, 128, 256])
+	input_sizes = ('input_size', [96])
+	# layers = ('layers', [1, 8, 64, 128])
+	layers = ('layers', [64])
 	dropouts = ('dropouts', [0.0, 0.25, 0.5])
 	rnn_bias_initializers = ('bias_initializer', [('zero', None), ('xavier', tf.contrib.layers.xavier_initializer())])
 	activation_functions = ('activation_function', [('elu', tf.nn.elu), ('softsign', tf.nn.softsign), ('tanh', tf.tanh)])
