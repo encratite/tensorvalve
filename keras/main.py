@@ -14,11 +14,11 @@ def read_wav(path, shape=None):
 	rate, data = scipy.io.wavfile.read(path)
 	return data
 	
-def reshape_wav(data, shape):
-	samples_per_batch = shape[1] * shape[2]
+def reshape_wav(data, sample_shape):
+	samples_per_batch = sample_shape[1] * sample_shape[2]
 	batches = len(data) // samples_per_batch
 	resized_data = np.resize(data, batches * samples_per_batch)
-	reshaped_data = np.reshape(resized_data, shape)
+	reshaped_data = np.reshape(resized_data, sample_shape)
 	return reshaped_data
 	
 def root_mean_squared_error(y_true, y_pred):
