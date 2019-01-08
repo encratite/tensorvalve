@@ -44,4 +44,4 @@ class Trainer:
 		training_generator = SlidingWindowGenerator(self.x_training_wav, self.y_training_wav, input_shape, output_size)
 		validation_generator = SlidingWindowGenerator(self.x_validation_wav, self.y_validation_wav, input_shape, output_size)
 		save_callback = SaveCallback(self.model_path)
-		history = model.fit(x=training_generator, y=validation_generator, batch_size=batch_size, epochs=epochs, verbose=1, validation_data=(x_validation, y_validation), callbacks=[save_callback])
+		history = model.fit_generator(generator=training_generator, epochs=epochs, verbose=1, validation_data=validation_generator, callbacks=[save_callback])

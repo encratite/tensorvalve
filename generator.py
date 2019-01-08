@@ -8,7 +8,7 @@ class SlidingWindowGenerator(Sequence):
 		self.input_shape = input_shape
 		self.input_size = input_shape[0] * input_shape[1]
 		self.output_size = output_size
-		assert self.input_size < self.output_size
+		assert self.output_size < self.input_size
 
 	def __len__(self):
 		length = len(self.x_wav) - self.input_size + 1
