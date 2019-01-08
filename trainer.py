@@ -41,7 +41,7 @@ class Trainer:
 			model.add(rnn_type(rnn_units, dropout=rnn_dropout, return_sequences=False, input_shape=input_shape))
 			model.compile('adam', loss=root_mean_squared_error)
 
-		training_generator = SlidingWindowGenerator(self.x_training_wav, self.y_training_wav, input_shape, output_size)
-		validation_generator = SlidingWindowGenerator(self.x_validation_wav, self.y_validation_wav, input_shape, output_size)
+		training_generator = SlidingWindowGenerator(self.x_training_wav, self.y_training_wav, input_shape, output_size, batch_size)
+		validation_generator = SlidingWindowGenerator(self.x_validation_wav, self.y_validation_wav, input_shape, output_size, batch_size)
 		save_callback = SaveCallback(self.model_path)
 		history = model.fit_generator(generator=training_generator, epochs=epochs, verbose=1, validation_data=validation_generator, callbacks=[save_callback])
