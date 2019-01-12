@@ -19,7 +19,7 @@ class SlidingWindowGenerator(Sequence):
 	def __getitem__(self, batch_index):
 		sample_index = batch_index * self.batch_size
 		sample_index_range = range(sample_index, sample_index + self.batch_size)
-		get_samples = lambda f: [*map(f, sample_index_range)]
+		get_samples = lambda f: np.array(list(map(f, sample_index_range)))
 		x = get_samples(self.get_x)
 		y = get_samples(self.get_y)
 		return x, y
