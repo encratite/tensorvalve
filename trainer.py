@@ -1,7 +1,7 @@
 import os
 
 from keras import Sequential
-from keras.layers import LSTM, GRU, Dense, ELU
+from keras.layers import LSTM, GRU, Dense, ELU, Activation
 from keras.models import load_model
 from keras.optimizers import Adam
 
@@ -41,8 +41,8 @@ class Trainer:
 			model = Sequential()
 			model.add(rnn_type(rnn_units, dropout=rnn_dropout, return_sequences=False, input_shape=input_shape))
 			model.add(Dense(output_size))
-			model.add(ELU())
-			optimizer = Adam(lr=0.001)
+			model.add(Activation('tanh'))
+			optimizer = Adam(lr=0.01)
 			model.compile(optimizer=optimizer, loss=root_mean_squared_error)
 
 		training_generator = SlidingWindowGenerator(self.x_training_wav, self.y_training_wav, input_shape, output_size, batch_size)
