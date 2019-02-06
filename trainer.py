@@ -1,8 +1,9 @@
 import os
 
 from keras import Sequential
-from keras.layers import LSTM, GRU
+from keras.layers import LSTM, GRU, Dense, ELU, Activation
 from keras.models import load_model
+from keras.optimizers import Adam
 
 from loss import root_mean_squared_error
 from callbacks import SaveCallback
@@ -21,13 +22,13 @@ class Trainer:
 		rnn_type = LSTM
 	
 		rnn_dropout = 0.0
-		rnn_units = 32
-		rnn_timesteps = 64
+		rnn_units = 128
+		rnn_timesteps = 128
 		rnn_features = 32
 
 		output_size = 1
 
-		batch_size = 32
+		batch_size = 512
 		epochs = 10000000
 
 		input_shape = (rnn_timesteps, rnn_features)
@@ -39,7 +40,10 @@ class Trainer:
 		else:
 			model = Sequential()
 			model.add(rnn_type(rnn_units, dropout=rnn_dropout, return_sequences=False, input_shape=input_shape))
-			model.compile('adam', loss=root_mean_squared_error)
+			model.add(Dense(output_size))
+			model.add(Activation('tanh'))
+			optimizer = Adam(lr=0.01)
+			model.compile(optimizer=optimizer, loss=root_mean_squared_error)
 
 		training_generator = SlidingWindowGenerator(self.x_training_wav, self.y_training_wav, input_shape, output_size, batch_size)
 		validation_generator = SlidingWindowGenerator(self.x_validation_wav, self.y_validation_wav, input_shape, output_size, batch_size)
